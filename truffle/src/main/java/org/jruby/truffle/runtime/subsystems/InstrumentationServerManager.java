@@ -52,49 +52,7 @@ public class InstrumentationServerManager {
 
             @Override
             public void handle(HttpExchange httpExchange) {
-                try {
-                    final StringBuilder builder = new StringBuilder();
-
-                    context.getSafepointManager().pauseAllThreadsAndExecuteFromNonRubyThread(null, new SafepointAction() {
-
-                        @Override
-                        public void run(RubyThread thread, Node currentNode) {
-                            try {
-                                Backtrace backtrace = RubyCallStack.getBacktrace(null);
-
-                                synchronized (this) {
-                                    // Not thread-safe so keep the formatting synchronized for now.
-                                    String[] lines = Backtrace.DISPLAY_FORMATTER.format(context, null, backtrace);
-
-                                    builder.append(String.format("#%d %s", Thread.currentThread().getId(), Thread.currentThread().getName()));
-                                    builder.append("\n");
-                                    for (String line : lines) {
-                                        builder.append(line);
-                                        builder.append("\n");
-                                    }
-                                    builder.append("\n");
-                                }
-                            } catch (Throwable e) {
-                                e.printStackTrace();
-                            }
-                        }
-
-                    });
-
-                    final byte[] bytes = builder.toString().getBytes("UTF-8");
-
-                    httpExchange.getResponseHeaders().set("Content-Type", "text/plain");
-                    httpExchange.sendResponseHeaders(200, bytes.length);
-
-                    final OutputStream stream = httpExchange.getResponseBody();
-                    stream.write(bytes);
-                    stream.close();
-                } catch (IOException e) {
-                    if (shuttingDown) {
-                        return;
-                    }
-                    e.printStackTrace();
-                }
+                throw new UnsupportedOperationException("Safepoints");
             }
 
         });
@@ -103,35 +61,7 @@ public class InstrumentationServerManager {
 
             @Override
             public void handle(HttpExchange httpExchange) {
-                try {
-                    context.getSafepointManager().pauseAllThreadsAndExecuteFromNonRubyThread(null, new SafepointAction() {
-
-                        @Override
-                        public void run(RubyThread thread, final Node currentNode) {
-                            if (thread.getName().equals("main")) {
-                                thread.getDeferredSafepointActions().add(new Runnable() {
-
-                                    @Override
-                                    public void run() {
-                                        new SimpleShell(context).run(Truffle.getRuntime().getCurrentFrame()
-                                                .getFrame(FrameInstance.FrameAccess.MATERIALIZE, true).materialize(), currentNode);
-                                    }
-
-                                });
-                            }
-                        }
-
-                    });
-
-                    httpExchange.getResponseHeaders().set("Content-Type", "text/plain");
-                    httpExchange.sendResponseHeaders(200, 0);
-                    httpExchange.getResponseBody().close();
-                } catch (IOException e) {
-                    if (shuttingDown) {
-                        return;
-                    }
-                    e.printStackTrace();
-                }
+                throw new UnsupportedOperationException("Safepoints");
             }
 
         });

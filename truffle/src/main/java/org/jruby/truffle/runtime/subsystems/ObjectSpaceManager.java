@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.WeakHashMap;
 
 import com.oracle.truffle.api.nodes.Node;
+
 import org.jruby.truffle.nodes.RubyNode;
 import org.jruby.truffle.runtime.RubyContext;
 import org.jruby.truffle.runtime.control.RaiseException;
@@ -149,33 +150,7 @@ public class ObjectSpaceManager {
     public Map<Long, RubyBasicObject> collectLiveObjects() {
         RubyNode.notDesignedForCompilation();
 
-        final Map<Long, RubyBasicObject> liveObjects = new HashMap<>();
-
-        final ObjectGraphVisitor visitor = new ObjectGraphVisitor() {
-
-            @Override
-            public boolean visit(RubyBasicObject object) {
-                return liveObjects.put(object.verySlowGetObjectID(), object) == null;
-            }
-
-        };
-
-        context.getSafepointManager().pauseAllThreadsAndExecute(null, new SafepointAction() {
-
-            @Override
-            public void run(RubyThread currentThread, Node currentNode) {
-                synchronized (liveObjects) {
-                    currentThread.visitObjectGraph(visitor);
-                    context.getCoreLibrary().getGlobalVariablesObject().visitObjectGraph(visitor);
-
-                    // Needs to be called from the corresponding Java thread or it will not use the correct call stack.
-                    visitCallStack(visitor);
-                }
-            }
-
-        });
-
-        return Collections.unmodifiableMap(liveObjects);
+        throw new UnsupportedOperationException("Safepoints");
     }
 
     private void visitCallStack(final ObjectGraphVisitor visitor) {

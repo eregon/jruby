@@ -87,7 +87,6 @@ public final class WhileNode extends RubyNode {
             }
 
             while (true) { // for redo
-                context.getSafepointManager().poll(this);
                 try {
                     body.execute(frame);
                     return true;
@@ -111,7 +110,6 @@ public final class WhileNode extends RubyNode {
 
         @Override
         public boolean executeRepeating(VirtualFrame frame) {
-            context.getSafepointManager().poll(this);
             try {
                 body.execute(frame);
             } catch (NextException e) {

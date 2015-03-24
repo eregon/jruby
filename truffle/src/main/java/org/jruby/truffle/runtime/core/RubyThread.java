@@ -57,8 +57,6 @@ public class RubyThread extends RubyBasicObject {
 
     private final List<Lock> ownedLocks = new ArrayList<>(); // Always accessed by the same underlying Java thread.
 
-    private final List<Runnable> deferredSafepointActions = new ArrayList<>();
-
     public RubyThread(RubyClass rubyClass, ThreadManager manager) {
         super(rubyClass);
         this.manager = manager;
@@ -90,7 +88,6 @@ public class RubyThread extends RubyBasicObject {
         thread.setName(name);
 
         manager.registerThread(this);
-        context.getSafepointManager().enterThread();
         manager.enterGlobalLock(this);
 
         try {
@@ -111,7 +108,6 @@ public class RubyThread extends RubyBasicObject {
     public void cleanup(RubyContext context) {
         status = Status.ABORTING;
         manager.leaveGlobalLock();
-        context.getSafepointManager().leaveThread();
         manager.unregisterThread(this);
 
         status = Status.DEAD;
@@ -207,10 +203,6 @@ public class RubyThread extends RubyBasicObject {
 
     public void setName(String name) {
         this.name = name;
-    }
-
-    public List<Runnable> getDeferredSafepointActions() {
-        return deferredSafepointActions;
     }
 
     public static class ThreadAllocator implements Allocator {

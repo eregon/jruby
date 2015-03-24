@@ -35,7 +35,6 @@ public class RedoableNode extends RubyNode {
                 return body.execute(frame);
             } catch (RedoException e) {
                 redoProfile.enter();
-                getContext().getSafepointManager().poll(this);
                 continue;
             }
         }

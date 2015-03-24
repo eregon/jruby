@@ -67,7 +67,6 @@ public class TryNode extends RubyNode {
                 try {
                     return handleException(frame, exception);
                 } catch (RetryException e) {
-                    getContext().getSafepointManager().poll(this);
                     continue;
                 }
             } finally {

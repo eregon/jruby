@@ -116,7 +116,6 @@ public class RubyFiber extends RubyBasicObject {
             @Override
             public void run() {
                 fiberManager.registerFiber(finalFiber);
-                finalFiber.getContext().getSafepointManager().enterThread();
                 threadManager.enterGlobalLock(rubyThread);
 
                 try {
@@ -132,7 +131,6 @@ public class RubyFiber extends RubyBasicObject {
                 } finally {
                     alive = false;
                     threadManager.leaveGlobalLock();
-                    finalFiber.getContext().getSafepointManager().leaveThread();
                     fiberManager.unregisterFiber(finalFiber);
                 }
             }

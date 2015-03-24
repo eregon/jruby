@@ -14,6 +14,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
+
 import org.jruby.RubyThread.Status;
 import org.jruby.truffle.nodes.dispatch.CallDispatchHeadNode;
 import org.jruby.truffle.nodes.dispatch.DispatchHeadNode;
@@ -23,7 +24,6 @@ import org.jruby.truffle.runtime.UndefinedPlaceholder;
 import org.jruby.truffle.runtime.control.RaiseException;
 import org.jruby.truffle.runtime.control.ThreadExitException;
 import org.jruby.truffle.runtime.core.*;
-import org.jruby.truffle.runtime.subsystems.SafepointAction;
 import org.jruby.truffle.runtime.util.Consumer;
 
 @CoreClass(name = "Thread")
@@ -99,18 +99,7 @@ public abstract class ThreadNodes {
 
         @Specialization
         public RubyThread kill(final RubyThread thread) {
-            getContext().getSafepointManager().pauseAllThreadsAndExecute(this, new SafepointAction() {
-
-                @Override
-                public void run(RubyThread currentThread, Node currentNode) {
-                    if (currentThread == thread) {
-                        currentThread.exit();
-                    }
-                }
-
-            });
-
-            return thread;
+            throw new UnsupportedOperationException("Safepoints");
         }
 
     }
@@ -260,20 +249,7 @@ public abstract class ThreadNodes {
                 throw new RaiseException(getContext().getCoreLibrary().typeError("exception class/object expected", this));
             }
 
-            final RaiseException exceptionWrapper = new RaiseException((RubyException) exception);
-
-            getContext().getSafepointManager().pauseAllThreadsAndExecute(this, new SafepointAction() {
-
-                @Override
-                public void run(RubyThread currentThread, Node currentNode) {
-                    if (currentThread == thread) {
-                        throw exceptionWrapper;
-                    }
-                }
-
-            });
-
-            return nil();
+            throw new UnsupportedOperationException("Safepoints");
         }
 
     }

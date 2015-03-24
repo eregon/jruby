@@ -62,7 +62,6 @@ public class RubyContext extends ExecutionContext {
     private final RubySymbol.SymbolTable symbolTable = new RubySymbol.SymbolTable(this);
     private final Shape emptyShape;
     private final Warnings warnings;
-    private final SafepointManager safepointManager;
     private final Random random = new Random();
     private final LexicalScope rootLexicalScope;
     private final CompilerOptions compilerOptions;
@@ -85,8 +84,6 @@ public class RubyContext extends ExecutionContext {
         if (compilerOptions.supportsOption("MinInliningMaxCallerSize")) {
             compilerOptions.setOption("MinInliningMaxCallerSize", 5000);
         }
-
-        safepointManager = new SafepointManager(this);
 
         this.runtime = runtime;
         translator = new TranslatorDriver();
@@ -479,10 +476,6 @@ public class RubyContext extends ExecutionContext {
 
     public Warnings getWarnings() {
         return warnings;
-    }
-
-    public SafepointManager getSafepointManager() {
-        return safepointManager;
     }
 
     public Random getRandom() {

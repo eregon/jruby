@@ -127,7 +127,6 @@ public class ThreadManager {
             }
         } catch (InterruptedException e) {
             // We were interrupted, possibly by the SafepointManager.
-            context.getSafepointManager().poll(null);
         }
         return result;
     }
