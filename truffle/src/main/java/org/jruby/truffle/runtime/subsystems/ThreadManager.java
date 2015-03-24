@@ -146,16 +146,6 @@ public class ThreadManager {
     }
 
     public void shutdown() {
-        // kill all threads except main
-        context.getSafepointManager().pauseAllThreadsAndExecute(null, new SafepointAction() {
-            @Override
-            public void run(RubyThread thread, Node currentThread) {
-                if (thread != rootThread) {
-                    thread.exit();
-                }
-            }
-        });
-
         rootThread.cleanup(context);
     }
 
