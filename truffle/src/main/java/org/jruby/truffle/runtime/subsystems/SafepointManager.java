@@ -30,11 +30,44 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class SafepointManager {
 
+    private static class VolatileFlagAssumption implements Assumption {
+        private final String name;
+        private volatile boolean isValid;
+
+        public VolatileFlagAssumption(String name) {
+            this.name = name;
+            isValid = true;
+        }
+
+        @Override
+        public void check() throws InvalidAssumptionException {
+            if (!isValid) {
+                throw new InvalidAssumptionException();
+            }
+        }
+
+        @Override
+        public boolean isValid() {
+            return isValid;
+        }
+
+        @Override
+        public void invalidate() {
+            isValid = false;
+        }
+
+        @Override
+        public String getName() {
+            return name;
+        }
+
+    }
+
     private final RubyContext context;
 
     private final Set<Thread> runningThreads = Collections.newSetFromMap(new ConcurrentHashMap<Thread, Boolean>());
 
-    @CompilerDirectives.CompilationFinal private Assumption assumption = Truffle.getRuntime().createAssumption("SafepointManager");
+    @CompilerDirectives.CompilationFinal private Assumption assumption = new VolatileFlagAssumption("SafepointManager");
     private final ReentrantLock lock = new ReentrantLock();
     private final Phaser phaser = new Phaser();
     private volatile SafepointAction action;
@@ -110,7 +143,7 @@ public class SafepointManager {
         phaser.arriveAndAwaitAdvance();
 
         if (isDrivingThread) {
-            assumption = Truffle.getRuntime().createAssumption("SafepointManager");
+            assumption = new VolatileFlagAssumption("SafepointManager");
         }
 
         // wait the assumption to be renewed
