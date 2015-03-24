@@ -20,6 +20,7 @@ import org.jruby.RubyThread.Status;
 import org.jruby.truffle.runtime.RubyContext;
 import org.jruby.truffle.runtime.core.RubyThread;
 
+import java.lang.invoke.SwitchPoint;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -30,11 +31,44 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class SafepointManager {
 
+    private static class SwitchPointAssumption implements Assumption {
+        private final String name;
+        private final SwitchPoint switchPoint;
+
+        public SwitchPointAssumption(String name) {
+            this.name = name;
+            this.switchPoint = new SwitchPoint();
+        }
+
+        @Override
+        public void check() throws InvalidAssumptionException {
+            if (!isValid()) {
+                throw new InvalidAssumptionException();
+            }
+        }
+
+        @Override
+        public boolean isValid() {
+            return !switchPoint.hasBeenInvalidated();
+        }
+
+        @Override
+        public void invalidate() {
+            SwitchPoint.invalidateAll(new SwitchPoint[] { switchPoint });
+        }
+
+        @Override
+        public String getName() {
+            return name;
+        }
+
+    }
+
     private final RubyContext context;
 
     private final Set<Thread> runningThreads = Collections.newSetFromMap(new ConcurrentHashMap<Thread, Boolean>());
 
-    @CompilerDirectives.CompilationFinal private Assumption assumption = Truffle.getRuntime().createAssumption("SafepointManager");
+    @CompilerDirectives.CompilationFinal private Assumption assumption = new SwitchPointAssumption("SafepointManager");
     private final ReentrantLock lock = new ReentrantLock();
     private final Phaser phaser = new Phaser();
     private volatile SafepointAction action;
@@ -110,7 +144,7 @@ public class SafepointManager {
         phaser.arriveAndAwaitAdvance();
 
         if (isDrivingThread) {
-            assumption = Truffle.getRuntime().createAssumption("SafepointManager");
+            assumption = new SwitchPointAssumption("SafepointManager");
         }
 
         // wait the assumption to be renewed
