@@ -16,6 +16,7 @@ import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.source.SourceSection;
 import org.jruby.RubyGC;
@@ -26,6 +27,7 @@ import org.jruby.truffle.runtime.RubyContext;
 import org.jruby.truffle.runtime.backtrace.Backtrace;
 import org.jruby.truffle.runtime.control.RaiseException;
 import org.jruby.truffle.runtime.core.*;
+import org.jruby.truffle.runtime.subsystems.SafepointAction;
 import org.jruby.truffle.runtime.subsystems.SimpleShell;
 import org.jruby.util.Memo;
 
@@ -452,6 +454,38 @@ public abstract class TrufflePrimitiveNodes {
         public RubyNilClass simpleShell() {
             new SimpleShell(getContext()).run(Truffle.getRuntime().getCallerFrame().getFrame(FrameInstance.FrameAccess.MATERIALIZE, true).materialize(), this);
             return nil();
+        }
+
+    }
+
+    @CoreMethod(names = "time_safepoint_latency", onSingleton = true)
+    public abstract static class TimeSafePointLatencyNode extends CoreMethodNode {
+
+        public TimeSafePointLatencyNode(RubyContext context, SourceSection sourceSection) {
+            super(context, sourceSection);
+        }
+
+        public TimeSafePointLatencyNode(TimeSafePointLatencyNode prev) {
+            super(prev);
+        }
+
+        @Specialization
+        public long timeSafepointLatency() {
+            final long start = System.nanoTime();
+            final long[] end = new long[]{0};
+
+            getContext().getSafepointManager().pauseAllThreadsAndExecute(this, new SafepointAction() {
+
+                @Override
+                public void run(RubyThread thread, Node currentNode) {
+                    if (end[0] == 0) {
+                        end[0] = System.nanoTime();
+                    }
+                }
+
+            });
+
+            return end[0] - start;
         }
 
     }
