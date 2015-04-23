@@ -302,7 +302,7 @@ public abstract class VMPrimitiveNodes {
 
         public VMObjectRespondToPrimitiveNode(RubyContext context, SourceSection sourceSection) {
             super(context, sourceSection);
-            respondToNode = KernelNodesFactory.RespondToNodeFactory.create(context, sourceSection, new RubyNode[] { null, null, null });
+            respondToNode = KernelNodesFactory.RespondToNodeFactory.create(context, sourceSection, null, null, null);
         }
 
         public VMObjectRespondToPrimitiveNode(VMObjectRespondToPrimitiveNode prev) {

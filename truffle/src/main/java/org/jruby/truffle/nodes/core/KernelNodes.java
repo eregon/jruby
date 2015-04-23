@@ -27,6 +27,7 @@ import org.jruby.common.IRubyWarnings;
 import org.jruby.runtime.Visibility;
 import org.jruby.truffle.nodes.RubyNode;
 import org.jruby.truffle.nodes.ThreadLocalObjectNode;
+import org.jruby.truffle.nodes.cast.BooleanCastNodeFactory;
 import org.jruby.truffle.nodes.cast.NumericToFloatNode;
 import org.jruby.truffle.nodes.cast.NumericToFloatNodeFactory;
 import org.jruby.truffle.nodes.coerce.ToStrNodeFactory;
@@ -1522,7 +1523,8 @@ public abstract class KernelNodes {
     }
 
     @CoreMethod(names = "respond_to?", required = 1, optional = 1)
-    public abstract static class RespondToNode extends CoreMethodNode {
+    @NodeChildren({ @NodeChild("object"), @NodeChild("name"), @NodeChild("ignoreVisibility") })
+    public abstract static class RespondToNode extends RubyNode {
 
         @Child private DoesRespondDispatchHeadNode dispatch;
         @Child private DoesRespondDispatchHeadNode dispatchIgnoreVisibility;
@@ -1545,17 +1547,16 @@ public abstract class KernelNodes {
             dispatchIgnoreVisibility = prev.dispatchIgnoreVisibility;
         }
 
-        public abstract boolean executeDoesRespondTo(VirtualFrame frame, Object object, Object name, boolean includePrivate);
-
-        @Specialization
-        public boolean doesRespondTo(VirtualFrame frame, Object object, RubyString name, UndefinedPlaceholder checkVisibility) {
-            return doesRespondTo(frame, object, name, false);
+        @Override
+        public Object[] defaultArguments() {
+            return new Object[] { false };
         }
 
-        @Specialization
-        public boolean doesRespondTo(VirtualFrame frame, Object object, RubyString name, RubyBasicObject checkVisibility) {
-            return doesRespondTo(frame, object, name, false);
+        @CreateCast("ignoreVisibility") public RubyNode createCast(RubyNode operand) {
+            return BooleanCastNodeFactory.create(getContext(), getSourceSection(), operand);
         }
+
+        public abstract boolean executeDoesRespondTo(VirtualFrame frame, Object object, Object name, boolean ignoreVisibility);
 
         @Specialization
         public boolean doesRespondTo(VirtualFrame frame, Object object, RubyString name, boolean ignoreVisibility) {
@@ -1564,16 +1565,6 @@ public abstract class KernelNodes {
             } else {
                 return dispatch.doesRespondTo(frame, name, object);
             }
-        }
-
-        @Specialization
-        public boolean doesRespondTo(VirtualFrame frame, Object object, RubySymbol name, UndefinedPlaceholder checkVisibility) {
-            return doesRespondTo(frame, object, name, false);
-        }
-
-        @Specialization
-        public boolean doesRespondTo(VirtualFrame frame, Object object, RubySymbol name, RubyBasicObject checkVisibility) {
-            return doesRespondTo(frame, object, name, false);
         }
 
         @Specialization

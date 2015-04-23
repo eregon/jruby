@@ -205,6 +205,21 @@ public abstract class CoreMethodNodeManager {
             }
         }
 
+        if (optional > 0) {
+            Object[] defaultArguments = methodNode.defaultArguments();
+            if (defaultArguments.length > 0) {
+                methodNode.adoptChildren();
+                for (int i = 0; i < defaultArguments.length; i++) {
+                    Object defaultValue = defaultArguments[i];
+                    int index = required + i;
+                    if (defaultValue != null) {
+                        RubyNode argWithDefaultNode = new ReadDefaultArgumentNode(context, sourceSection, index, defaultValue);
+                        argumentsNodes.get(1 + index).replace(argWithDefaultNode, "default core argument value");
+                    }
+                }
+            }
+        }
+
         verifyNoAmbiguousDefaultArguments(methodDetails);
 
         final CheckArityNode checkArity = new CheckArityNode(context, sourceSection, arity);

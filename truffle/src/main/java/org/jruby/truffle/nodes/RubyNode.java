@@ -65,6 +65,12 @@ public abstract class RubyNode extends Node implements ProbeNode.Instrumentable 
         return getContext().makeString("expression");
     }
 
+    private static final Object[] EMPTY_DEFAULT_ARGS = new Object[0];
+
+    public Object[] defaultArguments() {
+        return EMPTY_DEFAULT_ARGS;
+    }
+
     public String executeString(VirtualFrame frame) throws UnexpectedResultException {
         return RubyTypesGen.RUBYTYPES.expectString(execute(frame));
     }
