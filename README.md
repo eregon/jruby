@@ -1,3 +1,32 @@
+# An implementation of Guest-Language Safepoints on top of JRuby+Truffle
+
+All branches are based on [safepoint_base](https://github.com/eregon/jruby/tree/safepoint_base), which has 2 additional commits not in JRuby master:
+
+* One to remove an automatic usage of guest safepoints when the main thread terminates as it kills the other threads.
+  In all benchmarks there are no additional threads so this does not change the behavior.
+* Another adding a the [script](https://github.com/eregon/jruby/blob/3b1714cdbaffc34a7631b851e78a1a37528df48c/compilation.rb) to measure the compilation time.
+
+Each configuration is on a separate branch:
+* [removed](https://github.com/eregon/jruby/tree/safepoint_removed)
+* [api](https://github.com/eregon/jruby/tree/safepoint_base)
+* [switchpoint](https://github.com/eregon/jruby/tree/safepoint_switchpoint)
+* [volatile](https://github.com/eregon/jruby/tree/safepoint_volatile_flag)
+
+To run the benchmarks, you must:
+
+* Clone this repository: `git clone https://github.com/eregon/jruby -b safepoint && cd jruby`
+* Checkout the branch of one of the configurations: `git checkout safepoint_base`
+* Have a standard ruby installed, try `ruby -v`
+* Build JRuby: `ruby tool/jt.rb build`
+* Try the build: `ruby tool/jt.rb run -e 'print "Hello World"'`
+* Run benchmarks: `ruby tool/jt.rb bench reference all`
+
+Then checkout another branch, build again and compare with `ruby tool/jt.rb bench compare all`.
+
+The latency expriment is available in [safepoint_latency](https://github.com/eregon/jruby/tree/safepoint_latency).
+
+What follows is the original README.
+
 # JRuby -  A Java implementation of the Ruby language
 
 Master: [![Build Status](https://travis-ci.org/jruby/jruby.png?branch=master)](https://travis-ci.org/jruby/jruby) 
