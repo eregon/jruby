@@ -12,6 +12,8 @@ Each configuration is on a separate branch:
 * [switchpoint](https://github.com/eregon/jruby/tree/safepoint_switchpoint)
 * [volatile](https://github.com/eregon/jruby/tree/safepoint_volatile_flag)
 
+The implementation of each configuration lives in `org.jruby.truffle.runtime.subsystems.SafepointManager.java`
+
 To run the benchmarks, you must:
 
 * Clone this repository: `git clone https://github.com/eregon/jruby -b safepoint && cd jruby`
