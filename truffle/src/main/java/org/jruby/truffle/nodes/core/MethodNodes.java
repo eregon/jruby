@@ -39,6 +39,7 @@ import org.jruby.truffle.nodes.methods.CallMethodNode;
 import org.jruby.truffle.nodes.methods.CallMethodNodeGen;
 import org.jruby.truffle.nodes.objects.ClassNode;
 import org.jruby.truffle.nodes.objects.ClassNodeGen;
+import org.jruby.truffle.runtime.NotProvided;
 import org.jruby.truffle.runtime.RubyArguments;
 import org.jruby.truffle.runtime.RubyContext;
 import org.jruby.truffle.runtime.core.RubyBasicObject;
@@ -145,6 +146,8 @@ public abstract class MethodNodes {
             procOrNullNode = ProcOrNullNodeGen.create(context, sourceSection, null);
             callMethodNode = CallMethodNodeGen.create(context, sourceSection, null, null);
         }
+
+        public abstract Object executeCall(VirtualFrame frame, RubyBasicObject method, Object[] arguments, Object block);
 
         @Specialization
         protected Object call(VirtualFrame frame, RubyBasicObject method, Object[] arguments, Object block) {
@@ -312,28 +315,31 @@ public abstract class MethodNodes {
             final SourceSection sourceSection = method.getSharedMethodInfo().getSourceSection();
             final RootNode oldRootNode = ((RootCallTarget) method.getCallTarget()).getRootNode();
 
-            final SetReceiverNode setReceiverNode = new SetReceiverNode(getContext(), sourceSection, getReceiver(methodObject), method.getCallTarget());
-            final RootNode newRootNode = new RubyRootNode(getContext(), sourceSection, oldRootNode.getFrameDescriptor(), method.getSharedMethodInfo(), setReceiverNode);
+            final CallMethodFromProcNode callMethodFromProcNode = new CallMethodFromProcNode(getContext(), sourceSection, methodObject);
+            final RootNode newRootNode = new RubyRootNode(getContext(), sourceSection, oldRootNode.getFrameDescriptor(), method.getSharedMethodInfo(), callMethodFromProcNode);
             return Truffle.getRuntime().createCallTarget(newRootNode);
         }
 
     }
 
-    private static class SetReceiverNode extends RubyNode {
+    private static class CallMethodFromProcNode extends RubyNode {
 
-        private final Object receiver;
-        private final DirectCallNode methodCallNode;
+        private final RubyBasicObject method;
+        @Child CallNode callNode;
 
-        public SetReceiverNode(RubyContext context, SourceSection sourceSection, Object receiver, CallTarget methodCallTarget) {
+        public CallMethodFromProcNode(RubyContext context, SourceSection sourceSection, RubyBasicObject method) {
             super(context, sourceSection);
-            this.receiver = receiver;
-            this.methodCallNode = DirectCallNode.create(methodCallTarget);
+            this.method = method;
+            this.callNode = CallNodeFactory.create(context, sourceSection, new RubyNode[] {});
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
-            frame.getArguments()[RubyArguments.SELF_INDEX] = receiver;
-            return methodCallNode.call(frame, frame.getArguments());
+            Object block = RubyArguments.getBlock(frame.getArguments());
+            if (block == null) {
+                block = NotProvided.INSTANCE;
+            }
+            return callNode.executeCall(frame, method, RubyArguments.extractUserArguments(frame.getArguments()), block);
         }
 
     }
