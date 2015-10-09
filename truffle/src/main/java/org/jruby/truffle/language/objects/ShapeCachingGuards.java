@@ -19,7 +19,9 @@ public abstract class ShapeCachingGuards {
 
     public static boolean updateShape(DynamicObject object) {
         CompilerDirectives.transferToInterpreter();
-        return object.updateShape();
+        synchronized (object) {
+            return object.updateShape();
+        }
     }
 
     public static boolean isArrayShape(Shape shape) {

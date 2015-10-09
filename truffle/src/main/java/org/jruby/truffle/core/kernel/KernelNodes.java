@@ -126,6 +126,7 @@ import org.jruby.truffle.language.objects.TaintNode;
 import org.jruby.truffle.language.objects.TaintNodeGen;
 import org.jruby.truffle.language.objects.WriteObjectFieldNode;
 import org.jruby.truffle.language.objects.WriteObjectFieldNodeGen;
+import org.jruby.truffle.language.objects.shared.SharedObjects;
 import org.jruby.truffle.language.parser.ParserContext;
 import org.jruby.truffle.language.parser.jruby.TranslatorDriver;
 import org.jruby.truffle.language.threadlocal.ThreadLocalObject;
@@ -441,6 +442,7 @@ public abstract class KernelNodes {
 
         @TruffleBoundary
         private void copyInstanceVariables(DynamicObject from, DynamicObject to) {
+            // Concurrency: OK if callers create the object and publish it after copy
             for (Property property : from.getShape().getProperties()) {
                 if (property.getKey() instanceof String) {
                     to.define(property.getKey(), property.get(from, from.getShape()), 0);
@@ -1107,7 +1109,16 @@ public abstract class KernelNodes {
 
         @TruffleBoundary
         private Object ivarSet(DynamicObject object, String name, Object value) {
-            object.define(checkName(name), value, 0);
+            name = checkName(name);
+
+            if (SharedObjects.isShared(object)) {
+                SharedObjects.writeBarrier(value);
+                synchronized (object) {
+                    object.define(name, value, 0);
+                }
+            } else {
+                object.define(name, value, 0);
+            }
             return value;
         }
 
@@ -1150,13 +1161,24 @@ public abstract class KernelNodes {
         public Object removeInstanceVariable(DynamicObject object, String name) {
             final String ivar = SymbolTable.checkInstanceVariableName(getContext(), name, this);
             final Object value = object.get(ivar, nil());
-            if (!object.delete(name)) {
-                CompilerDirectives.transferToInterpreter();
-                throw new RaiseException(coreLibrary().nameErrorInstanceVariableNotDefined(name, this));
+
+            if (SharedObjects.isShared(object)) {
+                System.err.println("WARNING: removing field " + name + " on a shared object.");
+                synchronized (object) {
+                    removeField(object, name);
+                }
+            } else {
+                removeField(object, name);
             }
             return value;
         }
 
+        private void removeField(DynamicObject object, String name) {
+            if (!object.delete(name)) {
+                CompilerDirectives.transferToInterpreter();
+                throw new RaiseException(coreLibrary().nameErrorInstanceVariableNotDefined(name, this));
+            }
+        }
     }
 
     @CoreMethod(names = "instance_variables")

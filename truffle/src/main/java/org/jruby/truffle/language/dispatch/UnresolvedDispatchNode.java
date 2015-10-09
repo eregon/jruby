@@ -57,7 +57,9 @@ public final class UnresolvedDispatchNode extends DispatchNode {
 
         // Make sure to have an up-to-date Shape.
         if (receiverObject instanceof DynamicObject) {
-            ((DynamicObject) receiverObject).updateShape();
+            synchronized (receiverObject) {
+                ((DynamicObject) receiverObject).updateShape();
+            }
         }
 
         final DispatchNode dispatch = atomic(new Callable<DispatchNode>() {
