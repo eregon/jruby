@@ -18,11 +18,13 @@ import org.jruby.RubyThread.Status;
 import org.jruby.truffle.RubyContext;
 import org.jruby.truffle.core.Layouts;
 import org.jruby.truffle.core.fiber.FiberNodes;
+import org.jruby.truffle.language.Options;
 import org.jruby.truffle.language.RubyGuards;
 import org.jruby.truffle.language.SafepointAction;
 import org.jruby.truffle.language.SafepointManager;
 import org.jruby.truffle.language.backtrace.BacktraceFormatter;
 import org.jruby.truffle.language.control.RaiseException;
+import org.jruby.truffle.language.objects.shared.SharedObjects;
 
 import java.util.Collections;
 import java.util.Set;
@@ -199,6 +201,11 @@ public class ThreadManager {
         assert RubyGuards.isRubyThread(thread);
         initializeCurrentThread(thread);
         runningRubyThreads.add(thread);
+
+        if (Options.SHARED_OBJECTS && runningRubyThreads.size() > 1) {
+            SharedObjects.startSharing(context);
+            SharedObjects.writeBarrier(thread);
+        }
     }
 
     public synchronized void unregisterThread(DynamicObject thread) {
@@ -223,6 +230,11 @@ public class ThreadManager {
     @TruffleBoundary
     public Object[] getThreadList() {
         return runningRubyThreads.toArray(new Object[runningRubyThreads.size()]);
+    }
+
+    @TruffleBoundary
+    public Iterable<DynamicObject> iterateThreads() {
+        return runningRubyThreads;
     }
 
     @TruffleBoundary

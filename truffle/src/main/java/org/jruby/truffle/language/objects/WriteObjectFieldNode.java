@@ -10,6 +10,7 @@
 package org.jruby.truffle.language.objects;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
@@ -24,6 +25,7 @@ import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import org.jruby.truffle.RubyContext;
 import org.jruby.truffle.language.RubyGuards;
+import org.jruby.truffle.language.objects.shared.SharedObjects;
 
 @ImportStatic({ RubyGuards.class, ShapeCachingGuards.class })
 public abstract class WriteObjectFieldNode extends Node {
@@ -52,9 +54,22 @@ public abstract class WriteObjectFieldNode extends Node {
     public void writeExistingField(DynamicObject object, Object value,
             @Cached("getLocation(object, value)") Location location,
             @Cached("object.getShape()") Shape cachedShape,
-            @Cached("createAssumption()") Assumption validLocation) {
+            @Cached("createAssumption()") Assumption validLocation,
+            @Cached("isShared(cachedShape)") boolean shared) {
         try {
-            location.set(object, value, cachedShape);
+            if (shared) {
+                SharedObjects.writeBarrier(value);
+                synchronized (object) {
+                    if (object.getShape() != cachedShape) {
+                        CompilerDirectives.transferToInterpreter();
+                        execute(object, value);
+                        return;
+                    }
+                    location.set(object, value, cachedShape);
+                }
+            } else {
+                location.set(object, value, cachedShape);
+            }
         } catch (IncompatibleLocationException | FinalLocationException e) {
             // remove this entry
             validLocation.invalidate();
@@ -73,9 +88,22 @@ public abstract class WriteObjectFieldNode extends Node {
             @Cached("object.getShape()") Shape oldShape,
             @Cached("defineProperty(oldShape, value)") Shape newShape,
             @Cached("getNewLocation(newShape)") Location newLocation,
-            @Cached("createAssumption()") Assumption validLocation) {
+            @Cached("createAssumption()") Assumption validLocation,
+            @Cached("isShared(oldShape)") boolean shared) {
         try {
-            newLocation.set(object, value, oldShape, newShape);
+            if (shared) {
+                SharedObjects.writeBarrier(value);
+                synchronized (object) {
+                    if (object.getShape() != oldShape) {
+                        CompilerDirectives.transferToInterpreter();
+                        execute(object, value);
+                        return;
+                    }
+                    newLocation.set(object, value, oldShape, newShape);
+                }
+            } else {
+                newLocation.set(object, value, oldShape, newShape);
+            }
         } catch (IncompatibleLocationException e) {
             // remove this entry
             validLocation.invalidate();
@@ -91,7 +119,15 @@ public abstract class WriteObjectFieldNode extends Node {
     @TruffleBoundary
     @Specialization(contains = { "writeExistingField", "writeNewField", "updateShapeAndWrite" })
     public void writeUncached(DynamicObject object, Object value) {
-        object.define(name, value, 0);
+        final boolean shared = SharedObjects.isShared(object);
+        if (shared) {
+            SharedObjects.writeBarrier(value);
+            synchronized (object) {
+                object.define(name, value, 0);
+            }
+        } else {
+            object.define(name, value, 0);
+        }
     }
 
     protected Location getLocation(DynamicObject object, Object value) {
@@ -119,6 +155,10 @@ public abstract class WriteObjectFieldNode extends Node {
 
     protected int getCacheLimit() {
         return context.getOptions().INSTANCE_VARIABLE_CACHE;
+    }
+
+    protected boolean isShared(Shape shape) {
+        return SharedObjects.isShared(shape);
     }
 
 }

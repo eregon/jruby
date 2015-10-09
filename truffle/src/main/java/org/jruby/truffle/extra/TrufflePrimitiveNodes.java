@@ -56,6 +56,7 @@ import org.jruby.truffle.language.loader.CodeLoader;
 import org.jruby.truffle.language.loader.SourceLoader;
 import org.jruby.truffle.language.methods.DeclarationContext;
 import org.jruby.truffle.language.methods.InternalMethod;
+import org.jruby.truffle.language.objects.shared.SharedObjects;
 import org.jruby.truffle.language.parser.ParserContext;
 import org.jruby.truffle.platform.Graal;
 import org.jruby.truffle.stdlib.CoverageManager;
@@ -695,6 +696,20 @@ public abstract class TrufflePrimitiveNodes {
         public DynamicObject objectTypeOf(DynamicObject value) {
             return getSymbol(value.getShape().getObjectType().getClass().getSimpleName());
         }
+    }
+
+    @CoreMethod(names = "shared?", onSingleton = true, required = 1)
+    public abstract static class PrimitiveIsSharedNode extends CoreMethodArrayArgumentsNode {
+
+        public PrimitiveIsSharedNode(RubyContext context, SourceSection sourceSection) {
+            super(context, sourceSection);
+        }
+
+        @Specialization
+        public boolean isShared(DynamicObject object) {
+            return SharedObjects.isShared(object);
+        }
+
     }
 
     @CoreMethod(names = "spawn_process", onSingleton = true, required = 3)

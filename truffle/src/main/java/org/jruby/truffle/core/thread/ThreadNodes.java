@@ -32,6 +32,7 @@ import org.jruby.truffle.core.fiber.FiberManager;
 import org.jruby.truffle.core.fiber.FiberNodes;
 import org.jruby.truffle.core.proc.ProcNodes;
 import org.jruby.truffle.language.NotProvided;
+import org.jruby.truffle.language.Options;
 import org.jruby.truffle.language.RubyGuards;
 import org.jruby.truffle.language.RubyNode;
 import org.jruby.truffle.language.SafepointAction;
@@ -39,6 +40,7 @@ import org.jruby.truffle.language.backtrace.Backtrace;
 import org.jruby.truffle.language.control.RaiseException;
 import org.jruby.truffle.language.control.ReturnException;
 import org.jruby.truffle.language.control.ThreadExitException;
+import org.jruby.truffle.language.objects.shared.SharedObjects;
 
 import java.util.ArrayList;
 import java.util.concurrent.CountDownLatch;
@@ -79,14 +81,31 @@ public abstract class ThreadNodes {
         return threadLocals;
     }
 
+    private static void setThreadValue(final DynamicObject thread, final Object value) {
+        // A Thread is always shared (Thread.list)
+        SharedObjects.propagate(thread, value);
+        Layouts.THREAD.setValue(thread, value);
+    }
+
+    private static void setThreadException(DynamicObject thread, DynamicObject exception) {
+        SharedObjects.propagate(thread, exception);
+        Layouts.THREAD.setException(thread, exception);
+    }
+
     public static void initialize(final DynamicObject thread, RubyContext context, Node currentNode, final Object[] arguments, final DynamicObject block) {
         String info = Layouts.PROC.getSharedMethodInfo(block).getSourceSection().getShortDescription();
+
+        if (Options.SHARED_OBJECTS) {
+            SharedObjects.shareDeclarationFrame(block);
+        }
+
         initialize(thread, context, currentNode, info, new Runnable() {
             @Override
             public void run() {
                 final Object value = ProcNodes.rootCall(block, arguments);
-                Layouts.THREAD.setValue(thread, value);
+                setThreadValue(thread, value);
             }
+
         });
     }
 
@@ -114,12 +133,12 @@ public abstract class ThreadNodes {
             DynamicObject fiber = Layouts.THREAD.getFiberManager(thread).getRootFiber();
             FiberNodes.run(context, fiber, currentNode, task);
         } catch (ThreadExitException e) {
-            Layouts.THREAD.setValue(thread, context.getCoreLibrary().getNilObject());
+            setThreadValue(thread, context.getCoreLibrary().getNilObject());
             return;
         } catch (RaiseException e) {
-            Layouts.THREAD.setException(thread, e.getException());
+            setThreadException(thread, e.getException());
         } catch (ReturnException e) {
-            Layouts.THREAD.setException(thread, context.getCoreLibrary().unexpectedReturn(currentNode));
+            setThreadException(thread, context.getCoreLibrary().unexpectedReturn(currentNode));
         } finally {
             cleanup(context, thread);
         }

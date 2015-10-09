@@ -31,6 +31,7 @@ import org.jruby.truffle.language.methods.InternalMethod;
 import org.jruby.truffle.language.objects.IsFrozenNodeGen;
 import org.jruby.truffle.language.objects.ObjectGraphNode;
 import org.jruby.truffle.language.objects.ObjectIDOperations;
+import org.jruby.truffle.language.objects.shared.SharedObjects;
 
 import java.util.ArrayDeque;
 import java.util.Collection;
@@ -188,6 +189,8 @@ public class ModuleFields implements ModuleChain, ObjectGraphNode {
             throw new RaiseException(context.getCoreLibrary().argumentError("cyclic include detected", currentNode));
         }
 
+        SharedObjects.propagate(rubyModuleObject, module);
+
         // We need to include the module ancestors in reverse order for a given inclusionPoint
         ModuleChain inclusionPoint = this;
         Deque<DynamicObject> modulesToInclude = new ArrayDeque<>();
@@ -248,6 +251,8 @@ public class ModuleFields implements ModuleChain, ObjectGraphNode {
             throw new RaiseException(context.getCoreLibrary().argumentError("cyclic prepend detected", currentNode));
         }
 
+        SharedObjects.propagate(rubyModuleObject, module);
+
         ModuleChain mod = Layouts.MODULE.getFields(module).start;
         ModuleChain cur = start;
         while (mod != null && !(mod instanceof ModuleFields && RubyGuards.isRubyClass(((ModuleFields) mod).rubyModuleObject))) {
@@ -298,6 +303,7 @@ public class ModuleFields implements ModuleChain, ObjectGraphNode {
         final RubyConstant previous = constants.get(name);
         final boolean isPrivate = previous != null && previous.isPrivate();
 
+        SharedObjects.propagate(rubyModuleObject, value);
         constants.put(name, new RubyConstant(rubyModuleObject, value, isPrivate, autoload));
 
         newLexicalVersion();
@@ -315,6 +321,7 @@ public class ModuleFields implements ModuleChain, ObjectGraphNode {
     public void setClassVariable(RubyContext context, Node currentNode, String variableName, Object value) {
         checkFrozen(context, currentNode);
 
+        SharedObjects.propagate(rubyModuleObject, value);
         classVariables.put(variableName, value);
     }
 
@@ -344,7 +351,15 @@ public class ModuleFields implements ModuleChain, ObjectGraphNode {
         }
 
         checkFrozen(context, currentNode);
+
+        if (SharedObjects.isShared(rubyModuleObject)) {
+            for (DynamicObject object : method.getAdjacentObjects()) {
+                SharedObjects.writeBarrier(object);
+            }
+        }
+
         methods.put(method.getName(), method);
+
         newVersion();
 
         if (context.getCoreLibrary().isLoaded() && !method.isUndefined()) {

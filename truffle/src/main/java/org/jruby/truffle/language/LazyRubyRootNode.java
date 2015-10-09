@@ -29,6 +29,7 @@ import org.jruby.truffle.language.arguments.RubyArguments;
 import org.jruby.truffle.language.backtrace.InternalRootNode;
 import org.jruby.truffle.language.methods.DeclarationContext;
 import org.jruby.truffle.language.methods.InternalMethod;
+import org.jruby.truffle.language.objects.shared.SharedObjects;
 import org.jruby.truffle.language.parser.ParserContext;
 import org.jruby.truffle.language.parser.jruby.TranslatorDriver;
 
@@ -83,8 +84,15 @@ public class LazyRubyRootNode extends RootNode implements InternalRootNode {
                     context.getCoreLibrary().getObjectClass(), Visibility.PUBLIC, callTarget);
         }
 
-        return callNode.call(frame, RubyArguments.pack(null, null, method, DeclarationContext.TOP_LEVEL, null,
+        final Object value = callNode.call(frame, RubyArguments.pack(null, null, method, DeclarationContext.TOP_LEVEL, null,
                 mainObject, null, frame.getArguments()));
+
+        // The return value will be leaked to Java, share it.
+        if (Options.SHARED_OBJECTS) {
+            SharedObjects.writeBarrier(value);
+        }
+
+        return value;
     }
 
 }

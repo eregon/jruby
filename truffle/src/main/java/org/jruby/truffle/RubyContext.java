@@ -42,6 +42,7 @@ import org.jruby.truffle.language.loader.SourceCache;
 import org.jruby.truffle.language.loader.SourceLoader;
 import org.jruby.truffle.language.methods.DeclarationContext;
 import org.jruby.truffle.language.methods.InternalMethod;
+import org.jruby.truffle.language.objects.shared.SharedObjects;
 import org.jruby.truffle.platform.NativePlatform;
 import org.jruby.truffle.platform.NativePlatformFactory;
 import org.jruby.truffle.stdlib.CoverageManager;
@@ -153,6 +154,13 @@ public class RubyContext extends ExecutionContext {
         attachmentsManager = new AttachmentsManager(this, instrumenter);
         traceManager = new TraceManager(this, instrumenter);
         coverageManager = new CoverageManager(this, instrumenter);
+
+        // Share once everything is loaded.
+        // Otherwise, some internal stuff stored in Hash/Array/collections will not be shared,
+        // since they do not have a write barrier yet!
+        if (Options.SHARED_OBJECTS && Options.SHARED_OBJECTS_FORCE) {
+            SharedObjects.startSharing(this);
+        }
     }
 
     public Object send(Object object, String methodName, DynamicObject block, Object... arguments) {

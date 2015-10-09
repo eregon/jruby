@@ -70,6 +70,7 @@ import org.jruby.truffle.language.objects.IsANode;
 import org.jruby.truffle.language.objects.IsANodeGen;
 import org.jruby.truffle.language.objects.LogicalClassNode;
 import org.jruby.truffle.language.objects.LogicalClassNodeGen;
+import org.jruby.truffle.language.objects.shared.SharedObjects;
 import org.jruby.truffle.language.yield.YieldNode;
 import org.jruby.truffle.platform.signal.Signal;
 import org.jruby.truffle.platform.signal.SignalHandler;
@@ -493,6 +494,9 @@ public abstract class VMPrimitiveNodes {
         @TruffleBoundary
         @Specialization(guards = "isRubyString(key)")
         public Object get(DynamicObject key) {
+            // Sharing: we do not need to share here as it's only called by the main thread
+            assert getContext().getThreadManager().getCurrentThread() == getContext().getThreadManager().getRootThread();
+
             final Object value = getContext().getNativePlatform().getRubiniusConfiguration().get(key.toString());
 
             if (value == null) {
@@ -617,8 +621,11 @@ public abstract class VMPrimitiveNodes {
 
         @Specialization(guards = "isRubyClass(newClass)")
         public DynamicObject setClass(DynamicObject object, DynamicObject newClass) {
-            Layouts.BASIC_OBJECT.setLogicalClass(object, newClass);
-            Layouts.BASIC_OBJECT.setMetaClass(object, newClass);
+            SharedObjects.propagate(object, newClass);
+            synchronized (object) {
+                Layouts.BASIC_OBJECT.setLogicalClass(object, newClass);
+                Layouts.BASIC_OBJECT.setMetaClass(object, newClass);
+            }
             return object;
         }
 

@@ -19,7 +19,9 @@ public abstract class ShapeCachingGuards {
 
     public static boolean updateShape(DynamicObject object) {
         CompilerDirectives.transferToInterpreter();
-        return object.updateShape();
+        synchronized (object) {
+            return object.updateShape();
+        }
     }
 
     public static boolean isArrayShape(Shape shape) {
@@ -31,7 +33,7 @@ public abstract class ShapeCachingGuards {
     }
 
     public static boolean isBasicObjectShape(Shape shape) {
-        return shape.getObjectType().getClass().getName().endsWith(".BasicObjectType"); // FIXME
+        return shape.getObjectType().getClass().getName().endsWith("BasicObjectType"); // FIXME
     }
 
 }
