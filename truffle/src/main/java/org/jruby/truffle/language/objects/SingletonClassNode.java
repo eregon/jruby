@@ -22,6 +22,7 @@ import org.jruby.truffle.RubyContext;
 import org.jruby.truffle.core.klass.ClassNodes;
 import org.jruby.truffle.language.RubyNode;
 import org.jruby.truffle.language.control.RaiseException;
+import org.jruby.truffle.language.objects.shared.SharedObjects;
 
 @NodeChild(value = "value", type = RubyNode.class)
 public abstract class SingletonClassNode extends RubyNode {
@@ -155,6 +156,15 @@ public abstract class SingletonClassNode extends RubyNode {
         }
 
         Layouts.BASIC_OBJECT.setMetaClass(object, singletonClass);
+
+        if (SharedObjects.isShared(object)) {
+            SharedObjects.writeBarrier(singletonClass);
+            synchronized (object) {
+                Layouts.BASIC_OBJECT.setMetaClass(object, singletonClass);
+            }
+        } else {
+            Layouts.BASIC_OBJECT.setMetaClass(object, singletonClass);
+        }
 
         return singletonClass;
     }

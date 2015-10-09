@@ -22,6 +22,7 @@ import org.jruby.truffle.core.InterruptMode;
 import org.jruby.truffle.core.fiber.FiberManager;
 import org.jruby.truffle.core.fiber.FiberNodes;
 import org.jruby.truffle.core.proc.ProcOperations;
+import org.jruby.truffle.language.Options;
 import org.jruby.truffle.language.RubyGuards;
 import org.jruby.truffle.language.SafepointAction;
 import org.jruby.truffle.language.SafepointManager;
@@ -29,7 +30,7 @@ import org.jruby.truffle.language.backtrace.BacktraceFormatter;
 import org.jruby.truffle.language.control.RaiseException;
 import org.jruby.truffle.language.control.ReturnException;
 import org.jruby.truffle.language.control.ThreadExitException;
-
+import org.jruby.truffle.language.objects.shared.SharedObjects;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Set;
@@ -89,11 +90,16 @@ public class ThreadManager {
 
     public static void initialize(final DynamicObject thread, RubyContext context, Node currentNode, final Object[] arguments, final DynamicObject block) {
         String info = Layouts.PROC.getSharedMethodInfo(block).getSourceSection().getShortDescription();
+
+        if (Options.SHARED_OBJECTS) {
+            SharedObjects.shareDeclarationFrame(block);
+        }
+
         initialize(thread, context, currentNode, info, new Runnable() {
             @Override
             public void run() {
                 final Object value = ProcOperations.rootCall(block, arguments);
-                Layouts.THREAD.setValue(thread, value);
+                setThreadValue(thread, value);
             }
         });
     }
@@ -122,7 +128,7 @@ public class ThreadManager {
         try {
             task.run();
         } catch (ThreadExitException e) {
-            Layouts.THREAD.setValue(thread, context.getCoreLibrary().getNilObject());
+            setThreadValue(thread, context.getCoreLibrary().getNilObject());
             return;
         } catch (RaiseException e) {
             setException(context, thread, e.getException(), currentNode);
@@ -134,12 +140,19 @@ public class ThreadManager {
         }
     }
 
+    private static void setThreadValue(final DynamicObject thread, final Object value) {
+        // A Thread is always shared (Thread.list)
+        SharedObjects.propagate(thread, value);
+        Layouts.THREAD.setValue(thread, value);
+    }
+
     private static void setException(RubyContext context, DynamicObject thread, DynamicObject exception, Node currentNode) {
         final DynamicObject mainThread = context.getThreadManager().getRootThread();
         final boolean isSystemExit = Layouts.BASIC_OBJECT.getLogicalClass(exception) == context.getCoreLibrary().getSystemExitClass();
         if (thread != mainThread && (isSystemExit || Layouts.THREAD.getAbortOnException(thread))) {
             ThreadNodes.ThreadRaisePrimitiveNode.raiseInThread(context, mainThread, exception, currentNode);
         }
+        SharedObjects.propagate(thread, exception);
         Layouts.THREAD.setException(thread, exception);
     }
 
@@ -328,6 +341,11 @@ public class ThreadManager {
         assert RubyGuards.isRubyThread(thread);
         initializeCurrentThread(thread);
         runningRubyThreads.add(thread);
+
+        if (Options.SHARED_OBJECTS && runningRubyThreads.size() > 1) {
+            SharedObjects.startSharing(context);
+            SharedObjects.writeBarrier(thread);
+        }
     }
 
     public synchronized void unregisterThread(DynamicObject thread) {
@@ -352,6 +370,11 @@ public class ThreadManager {
     @TruffleBoundary
     public Object[] getThreadList() {
         return runningRubyThreads.toArray(new Object[runningRubyThreads.size()]);
+    }
+
+    @TruffleBoundary
+    public Iterable<DynamicObject> iterateThreads() {
+        return runningRubyThreads;
     }
 
     @TruffleBoundary

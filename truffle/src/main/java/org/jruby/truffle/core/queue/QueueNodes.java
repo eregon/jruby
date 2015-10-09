@@ -32,6 +32,7 @@ import org.jruby.truffle.language.RubyNode;
 import org.jruby.truffle.language.control.RaiseException;
 import org.jruby.truffle.language.objects.AllocateObjectNode;
 import org.jruby.truffle.language.objects.AllocateObjectNodeGen;
+import org.jruby.truffle.language.objects.shared.SharedObjects;
 
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -64,6 +65,7 @@ public abstract class QueueNodes {
         public DynamicObject push(DynamicObject self, final Object value) {
             final BlockingQueue<Object> queue = Layouts.QUEUE.getQueue(self);
 
+            SharedObjects.propagate(self, value);
             doPush(value, queue);
 
             return self;

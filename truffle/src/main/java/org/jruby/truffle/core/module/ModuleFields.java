@@ -28,6 +28,7 @@ import org.jruby.truffle.language.methods.InternalMethod;
 import org.jruby.truffle.language.objects.IsFrozenNode;
 import org.jruby.truffle.language.objects.ObjectGraphNode;
 import org.jruby.truffle.language.objects.ObjectIDOperations;
+import org.jruby.truffle.language.objects.shared.SharedObjects;
 
 import java.util.ArrayDeque;
 import java.util.Collection;
@@ -188,6 +189,8 @@ public class ModuleFields implements ModuleChain, ObjectGraphNode {
             throw new RaiseException(context.getCoreExceptions().argumentError("cyclic include detected", currentNode));
         }
 
+        SharedObjects.propagate(rubyModuleObject, module);
+
         // We need to include the module ancestors in reverse order for a given inclusionPoint
         ModuleChain inclusionPoint = this;
         Deque<DynamicObject> modulesToInclude = new ArrayDeque<>();
@@ -248,6 +251,8 @@ public class ModuleFields implements ModuleChain, ObjectGraphNode {
             throw new RaiseException(context.getCoreExceptions().argumentError("cyclic prepend detected", currentNode));
         }
 
+        SharedObjects.propagate(rubyModuleObject, module);
+
         ModuleChain mod = Layouts.MODULE.getFields(module).start;
         ModuleChain cur = start;
         while (mod != null && !(mod instanceof ModuleFields && RubyGuards.isRubyClass(((ModuleFields) mod).rubyModuleObject))) {
@@ -295,6 +300,8 @@ public class ModuleFields implements ModuleChain, ObjectGraphNode {
         // TODO(CS): warn when redefining a constant
         // TODO (nirvdrum 18-Feb-15): But don't warn when redefining an autoloaded constant.
 
+        SharedObjects.propagate(rubyModuleObject, value);
+
         while (true) {
             final RubyConstant previous = constants.get(name);
             final boolean isPrivate = previous != null && previous.isPrivate();
@@ -329,6 +336,13 @@ public class ModuleFields implements ModuleChain, ObjectGraphNode {
         }
 
         checkFrozen(context, currentNode);
+
+        if (SharedObjects.isShared(rubyModuleObject)) {
+            for (DynamicObject object : method.getAdjacentObjects()) {
+                SharedObjects.writeBarrier(object);
+            }
+        }
+
         methods.put(method.getName(), method);
 
         if (!context.getCoreLibrary().isInitializing()) {
