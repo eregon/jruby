@@ -26,6 +26,8 @@ import com.oracle.truffle.api.object.Shape;
 import org.jruby.truffle.RubyContext;
 import org.jruby.truffle.language.RubyGuards;
 import org.jruby.truffle.language.objects.shared.SharedObjects;
+import org.jruby.truffle.language.objects.shared.WriteBarrierNode;
+import org.jruby.truffle.language.objects.shared.WriteBarrierNodeGen;
 
 @ImportStatic({ RubyGuards.class, ShapeCachingGuards.class })
 public abstract class WriteObjectFieldNode extends Node {
@@ -55,10 +57,11 @@ public abstract class WriteObjectFieldNode extends Node {
             @Cached("getLocation(object, value)") Location location,
             @Cached("object.getShape()") Shape cachedShape,
             @Cached("createAssumption()") Assumption validLocation,
-            @Cached("isShared(cachedShape)") boolean shared) {
+            @Cached("isShared(cachedShape)") boolean shared,
+            @Cached("createWriteBarrierNode(shared)") WriteBarrierNode writeBarrierNode) {
         try {
             if (shared) {
-                SharedObjects.writeBarrier(value);
+                writeBarrierNode.executeWriteBarrier(value);
                 synchronized (object) {
                     if (object.getShape() != cachedShape) {
                         CompilerDirectives.transferToInterpreter();
@@ -89,10 +92,11 @@ public abstract class WriteObjectFieldNode extends Node {
             @Cached("defineProperty(oldShape, value)") Shape newShape,
             @Cached("getNewLocation(newShape)") Location newLocation,
             @Cached("createAssumption()") Assumption validLocation,
-            @Cached("isShared(oldShape)") boolean shared) {
+            @Cached("isShared(oldShape)") boolean shared,
+            @Cached("createWriteBarrierNode(shared)") WriteBarrierNode writeBarrierNode) {
         try {
             if (shared) {
-                SharedObjects.writeBarrier(value);
+                writeBarrierNode.executeWriteBarrier(value);
                 synchronized (object) {
                     if (object.getShape() != oldShape) {
                         CompilerDirectives.transferToInterpreter();
@@ -159,6 +163,14 @@ public abstract class WriteObjectFieldNode extends Node {
 
     protected boolean isShared(Shape shape) {
         return SharedObjects.isShared(shape);
+    }
+
+    protected WriteBarrierNode createWriteBarrierNode(boolean shared) {
+        if (shared) {
+            return WriteBarrierNodeGen.create();
+        } else {
+            return null;
+        }
     }
 
 }
