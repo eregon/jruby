@@ -28,7 +28,7 @@ import org.jruby.truffle.core.cast.BooleanCastWithDefaultNodeGen;
 import org.jruby.truffle.core.thread.ThreadManager.BlockingAction;
 import org.jruby.truffle.language.RubyNode;
 import org.jruby.truffle.language.control.RaiseException;
-import org.jruby.truffle.language.objects.shared.SharedObjects;
+import org.jruby.truffle.language.objects.shared.PropagateSharingNode;
 
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.locks.ReentrantLock;
@@ -131,6 +131,8 @@ public abstract class SizedQueueNodes {
     })
     public abstract static class PushNode extends CoreMethodNode {
 
+        @Child PropagateSharingNode propagateSharingNode = PropagateSharingNode.create();
+
         public PushNode(RubyContext context, SourceSection sourceSection) {
             super(context, sourceSection);
         }
@@ -144,7 +146,7 @@ public abstract class SizedQueueNodes {
         public DynamicObject pushBlocking(DynamicObject self, final Object value, boolean nonBlocking) {
             final BlockingQueue<Object> queue = Layouts.SIZED_QUEUE.getQueue(self);
 
-            SharedObjects.propagate(self, value);
+            propagateSharingNode.propagate(self, value);
             doPushBlocking(value, queue);
 
             return self;
@@ -165,7 +167,7 @@ public abstract class SizedQueueNodes {
         public DynamicObject pushNonBlock(DynamicObject self, final Object value, boolean nonBlocking) {
             final BlockingQueue<Object> queue = Layouts.SIZED_QUEUE.getQueue(self);
 
-            SharedObjects.propagate(self, value);
+            propagateSharingNode.propagate(self, value);
             final boolean pushed = doOffer(value, queue);
             if (!pushed) {
                 CompilerDirectives.transferToInterpreter();
