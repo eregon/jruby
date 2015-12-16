@@ -31,7 +31,7 @@ import org.jruby.truffle.language.RubyNode;
 import org.jruby.truffle.language.control.RaiseException;
 import org.jruby.truffle.language.objects.AllocateObjectNode;
 import org.jruby.truffle.language.objects.AllocateObjectNodeGen;
-import org.jruby.truffle.language.objects.shared.SharedObjects;
+import org.jruby.truffle.language.objects.shared.PropagateSharingNode;
 
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -60,6 +60,8 @@ public abstract class QueueNodes {
     @CoreMethod(names = { "push", "<<", "enq" }, required = 1)
     public abstract static class PushNode extends CoreMethodArrayArgumentsNode {
 
+        @Child PropagateSharingNode propagateSharingNode = PropagateSharingNode.create();
+
         public PushNode(RubyContext context, SourceSection sourceSection) {
             super(context, sourceSection);
         }
@@ -68,7 +70,7 @@ public abstract class QueueNodes {
         public DynamicObject push(DynamicObject self, final Object value) {
             final BlockingQueue<Object> queue = Layouts.QUEUE.getQueue(self);
 
-            SharedObjects.propagate(self, value);
+            propagateSharingNode.propagate(self, value);
             doPush(value, queue);
 
             return self;
