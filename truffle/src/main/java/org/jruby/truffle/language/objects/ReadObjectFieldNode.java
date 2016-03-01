@@ -19,6 +19,8 @@ import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import org.jruby.truffle.RubyContext;
 import org.jruby.truffle.language.RubyGuards;
+import org.jruby.truffle.language.objects.shared.SharedObjects;
+import org.jruby.util.unsafe.UnsafeHolder;
 
 @ImportStatic({ RubyGuards.class, ShapeCachingGuards.class })
 public abstract class ReadObjectFieldNode extends Node {
@@ -45,8 +47,12 @@ public abstract class ReadObjectFieldNode extends Node {
             limit = "getCacheLimit()")
     protected Object readObjectFieldCached(DynamicObject receiver,
             @Cached("receiver.getShape()") Shape cachedShape,
-            @Cached("cachedShape.getProperty(name)") Property property) {
+            @Cached("cachedShape.getProperty(name)") Property property,
+            @Cached("isShared(cachedShape)") boolean shared) {
         if (property != null) {
+            if (shared) {
+                UnsafeHolder.loadFence();
+            }
             return property.get(receiver, cachedShape);
         } else {
             return defaultValue;
@@ -61,7 +67,13 @@ public abstract class ReadObjectFieldNode extends Node {
     @TruffleBoundary
     @Specialization(contains = { "readObjectFieldCached", "updateShapeAndRead" })
     protected Object readObjectFieldUncached(DynamicObject receiver) {
-        return receiver.get(name, defaultValue);
+        synchronized (receiver) {
+            return receiver.get(name, defaultValue);
+        }
+    }
+
+    protected boolean isShared(Shape shape) {
+        return SharedObjects.isShared(shape);
     }
 
     protected int getCacheLimit() {
