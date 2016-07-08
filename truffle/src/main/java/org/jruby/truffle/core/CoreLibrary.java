@@ -116,6 +116,7 @@ import org.jruby.truffle.language.objects.FreezeNode;
 import org.jruby.truffle.language.objects.FreezeNodeGen;
 import org.jruby.truffle.language.objects.SingletonClassNode;
 import org.jruby.truffle.language.objects.SingletonClassNodeGen;
+import org.jruby.truffle.language.objects.WriteObjectFieldNode;
 import org.jruby.truffle.language.parser.ParserContext;
 import org.jruby.truffle.platform.RubiniusTypes;
 import org.jruby.truffle.platform.signal.SignalManager;
@@ -559,7 +560,7 @@ public class CoreLibrary {
         Layouts.CLASS.setInstanceFactoryUnsafe(symbolClass, alwaysFrozen(Layouts.SYMBOL.createSymbolShape(symbolClass, symbolClass)));
 
         threadClass = defineClass("Thread");
-        threadClass.define("@abort_on_exception", false);
+        threadClass.define("@abort_on_exception", false, 0, WriteObjectFieldNode.LOCATION_FACTORY);
         Layouts.CLASS.setInstanceFactoryUnsafe(threadClass, Layouts.THREAD.createThreadShape(threadClass, threadClass));
 
         threadBacktraceClass = defineClass(threadClass, objectClass, "Backtrace");

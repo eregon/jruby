@@ -13,7 +13,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import org.jruby.truffle.Layouts;
 import org.jruby.truffle.RubyContext;
 import org.jruby.truffle.core.rope.Rope;
-
+import org.jruby.truffle.language.objects.WriteObjectFieldNode;
 import java.util.Map;
 import java.util.WeakHashMap;
 
@@ -34,7 +34,7 @@ public class FrozenStrings {
 
         if (string == null) {
             string = StringOperations.createString(context, rope);
-            string.define(Layouts.FROZEN_IDENTIFIER, true);
+            string.define(Layouts.FROZEN_IDENTIFIER, true, 0, WriteObjectFieldNode.LOCATION_FACTORY);
             frozenStrings.put(rope, string);
         }
 

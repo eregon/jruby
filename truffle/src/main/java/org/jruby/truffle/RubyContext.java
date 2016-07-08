@@ -59,6 +59,10 @@ import java.io.PrintStream;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 
+import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.object.debug.ShapeProfiler;
+import org.jruby.truffle.Layouts;
+
 public class RubyContext extends ExecutionContext {
 
     private static volatile RubyContext latestInstance;
@@ -103,6 +107,15 @@ public class RubyContext extends ExecutionContext {
 
     public RubyContext(Ruby jrubyRuntime, TruffleLanguage.Env env) {
         latestInstance = this;
+
+        ShapeProfiler.EXTRA = new ShapeProfiler.ShapeFormatter() {
+            @Override
+            public String format(Shape shape) {
+                DynamicObject klass = Layouts.BASIC_OBJECT.getLogicalClass(shape.getObjectType());
+                return Layouts.MODULE.getFields(klass).getName();
+            }
+        };
+
 
         this.jrubyRuntime = jrubyRuntime;
         this.env = env;

@@ -125,10 +125,10 @@ public abstract class ObjectIDOperations {
         if (SharedObjects.isShared(object)) {
             synchronized (object) {
                 // no need for a write barrier here, objectID is a long.
-                object.define(Layouts.OBJECT_ID_IDENTIFIER, objectID, 0);
+                object.define(Layouts.OBJECT_ID_IDENTIFIER, objectID, 0, WriteObjectFieldNode.LOCATION_FACTORY);
             }
         } else {
-            object.define(Layouts.OBJECT_ID_IDENTIFIER, objectID, 0);
+            object.define(Layouts.OBJECT_ID_IDENTIFIER, objectID, 0, WriteObjectFieldNode.LOCATION_FACTORY);
         }
 
         return objectID;

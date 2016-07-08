@@ -30,6 +30,7 @@ import org.jruby.truffle.language.backtrace.BacktraceFormatter;
 import org.jruby.truffle.language.control.RaiseException;
 import org.jruby.truffle.language.control.ReturnException;
 import org.jruby.truffle.language.control.ThreadExitException;
+import org.jruby.truffle.language.objects.WriteObjectFieldNode;
 import org.jruby.truffle.language.objects.shared.SharedObjects;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -82,9 +83,9 @@ public class ThreadManager {
     private static DynamicObject createThreadLocals(RubyContext context) {
         final DynamicObjectFactory instanceFactory = Layouts.CLASS.getInstanceFactory(context.getCoreLibrary().getObjectClass());
         final DynamicObject threadLocals = Layouts.BASIC_OBJECT.createBasicObject(instanceFactory);
-        threadLocals.define("$!", context.getCoreLibrary().getNilObject(), 0);
-        threadLocals.define("$~", context.getCoreLibrary().getNilObject(), 0);
-        threadLocals.define("$?", context.getCoreLibrary().getNilObject(), 0);
+        threadLocals.define("$!", context.getCoreLibrary().getNilObject(), 0, WriteObjectFieldNode.LOCATION_FACTORY);
+        threadLocals.define("$~", context.getCoreLibrary().getNilObject(), 0, WriteObjectFieldNode.LOCATION_FACTORY);
+        threadLocals.define("$?", context.getCoreLibrary().getNilObject(), 0, WriteObjectFieldNode.LOCATION_FACTORY);
         return threadLocals;
     }
 

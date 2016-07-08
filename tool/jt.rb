@@ -44,7 +44,7 @@ module Utilities
   end
 
   def self.truffle_release?
-    !truffle_version.include?('SNAPSHOT')
+    true#!truffle_version.include?('SNAPSHOT')
   end
 
   def self.find_graal_javacmd_and_options

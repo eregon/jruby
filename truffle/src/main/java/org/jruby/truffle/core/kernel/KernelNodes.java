@@ -410,7 +410,7 @@ public abstract class KernelNodes {
             // Concurrency: OK if callers create the object and publish it after copy
             for (Property property : from.getShape().getProperties()) {
                 if (property.getKey() instanceof String) {
-                    to.define(property.getKey(), property.get(from, from.getShape()), 0);
+                    to.define(property.getKey(), property.get(from, from.getShape()), 0, WriteObjectFieldNode.LOCATION_FACTORY);
                 }
             }
         }

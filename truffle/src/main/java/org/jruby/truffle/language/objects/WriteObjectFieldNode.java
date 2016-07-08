@@ -20,8 +20,11 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.FinalLocationException;
 import com.oracle.truffle.api.object.IncompatibleLocationException;
 import com.oracle.truffle.api.object.Location;
+import com.oracle.truffle.api.object.LocationFactory;
+import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import java.util.EnumSet;
 import org.jruby.truffle.language.RubyBaseNode;
 import org.jruby.truffle.language.RubyGuards;
 import org.jruby.truffle.language.objects.shared.SharedObjects;
@@ -124,10 +127,10 @@ public abstract class WriteObjectFieldNode extends RubyBaseNode {
         if (shared) {
             SharedObjects.writeBarrier(value);
             synchronized (object) {
-                object.define(name, value, 0);
+                object.define(name, value, 0, LOCATION_FACTORY);
             }
         } else {
-            object.define(name, value, 0);
+            object.define(name, value, 0, LOCATION_FACTORY);
         }
     }
 
@@ -142,8 +145,20 @@ public abstract class WriteObjectFieldNode extends RubyBaseNode {
         }
     }
 
+    public static final LocationFactory LOCATION_FACTORY = new LocationFactory() {
+        @Override
+        public Location createLocation(Shape shape, Object value) {
+            if (RubyGuards.isBoxedPrimitive(value) || value instanceof Character) {
+                return shape.allocator().locationForValue(value, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull));
+            } else {
+                // Use a single Object location
+                return shape.allocator().locationForType(Object.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull));
+            }
+        }
+    };
+
     protected Shape defineProperty(Shape oldShape, Object value) {
-        return oldShape.defineProperty(name, value, 0);
+        return oldShape.defineProperty(name, value, 0, LOCATION_FACTORY);
     }
 
     protected Location getNewLocation(Shape newShape) {

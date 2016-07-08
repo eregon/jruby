@@ -24,6 +24,7 @@ import org.jruby.truffle.core.rope.Rope;
 import org.jruby.truffle.core.string.CoreStrings;
 import org.jruby.truffle.core.string.StringOperations;
 import org.jruby.truffle.language.RubyGuards;
+import org.jruby.truffle.language.objects.WriteObjectFieldNode;
 
 public class CoreExceptions {
 
@@ -487,7 +488,7 @@ public class CoreExceptions {
     public DynamicObject nameError(String message, String name, Node currentNode) {
         final DynamicObject nameString = StringOperations.createString(context, StringOperations.encodeRope(message, UTF8Encoding.INSTANCE));
         DynamicObject nameError = ExceptionOperations.createRubyException(context.getCoreLibrary().getNameErrorClass(), nameString, context.getCallStack().getBacktrace(currentNode));
-        nameError.define("@name", context.getSymbolTable().getSymbol(name), 0);
+        nameError.define("@name", context.getSymbolTable().getSymbol(name), 0, WriteObjectFieldNode.LOCATION_FACTORY);
         return nameError;
     }
 
@@ -497,14 +498,14 @@ public class CoreExceptions {
     public DynamicObject noMethodError(String message, String name, Node currentNode) {
         final DynamicObject messageString = StringOperations.createString(context, StringOperations.encodeRope(message, UTF8Encoding.INSTANCE));
         DynamicObject noMethodError = ExceptionOperations.createRubyException(context.getCoreLibrary().getNoMethodErrorClass(), messageString, context.getCallStack().getBacktrace(currentNode));
-        noMethodError.define("@name", context.getSymbolTable().getSymbol(name), 0);
+        noMethodError.define("@name", context.getSymbolTable().getSymbol(name), 0, WriteObjectFieldNode.LOCATION_FACTORY);
         return noMethodError;
     }
 
     @TruffleBoundary
     public DynamicObject noSuperMethodOutsideMethodError(Node currentNode) {
         DynamicObject noMethodError = noMethodError("super called outside of method", "<unknown>", currentNode);
-        noMethodError.define("@name", context.getCoreLibrary().getNilObject(), 0); // FIXME: the name of the method is not known in this case currently
+        noMethodError.define("@name", context.getCoreLibrary().getNilObject(), 0, WriteObjectFieldNode.LOCATION_FACTORY); // FIXME: the name of the method is not known in this case currently
         return noMethodError;
     }
 
@@ -537,7 +538,7 @@ public class CoreExceptions {
     public DynamicObject loadError(String message, String path, Node currentNode) {
         DynamicObject messageString = StringOperations.createString(context, StringOperations.encodeRope(message, UTF8Encoding.INSTANCE));
         DynamicObject loadError = ExceptionOperations.createRubyException(context.getCoreLibrary().getLoadErrorClass(), messageString, context.getCallStack().getBacktrace(currentNode));
-        loadError.define("@path", StringOperations.createString(context, StringOperations.encodeRope(path, UTF8Encoding.INSTANCE)), 0);
+        loadError.define("@path", StringOperations.createString(context, StringOperations.encodeRope(path, UTF8Encoding.INSTANCE)), 0, WriteObjectFieldNode.LOCATION_FACTORY);
         return loadError;
     }
 
@@ -790,7 +791,7 @@ public class CoreExceptions {
     public DynamicObject systemExit(int exitStatus, Node currentNode) {
         final DynamicObject message = StringOperations.createString(context, StringOperations.encodeRope("exit", UTF8Encoding.INSTANCE));
         final DynamicObject systemExit = ExceptionOperations.createRubyException(context.getCoreLibrary().getSystemExitClass(), message, context.getCallStack().getBacktrace(currentNode));
-        systemExit.define("@status", exitStatus, 0);
+        systemExit.define("@status", exitStatus, 0, WriteObjectFieldNode.LOCATION_FACTORY);
         return systemExit;
     }
 
