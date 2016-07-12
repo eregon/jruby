@@ -81,7 +81,7 @@ public abstract class SharedObjects {
     }
 
     @TruffleBoundary
-    private static void shareObject(Object value) {
+    public static void shareObject(Object value) {
         final Deque<DynamicObject> stack = new ArrayDeque<>();
         stack.add((DynamicObject) value);
         shareObjects(stack);
