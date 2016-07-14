@@ -167,7 +167,7 @@ public abstract class WriteObjectFieldNode extends Node {
 
     protected WriteBarrierNode createWriteBarrierNode(boolean shared) {
         if (shared) {
-            return WriteBarrierNodeGen.create();
+            return WriteBarrierNodeGen.create(0);
         } else {
             return null;
         }
