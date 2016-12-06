@@ -1277,6 +1277,36 @@ public abstract class ArrayNodes {
 
     }
 
+    @CoreMethod(names = "map_gpu", needsBlock = true)
+    @ImportStatic(ArrayGuards.class)
+    public abstract static class MapGPUNode extends YieldingCoreMethodNode {
+
+        @Specialization(guards = "isDoubleArray(array)")
+        public Object map(VirtualFrame frame, DynamicObject array, DynamicObject block,
+                @Cached("create(getContext())") ArrayBuilderNode arrayBuilder) {
+            final double[] store = (double[]) getStore(array);
+            final int size = getSize(array);
+
+            Object mappedStore = arrayBuilder.start(size);
+
+            int i = 0;
+            try {
+                for (; i < getSize(array); i++) {
+                    final Object mappedValue = yield(frame, block, store[i]);
+                    mappedStore = arrayBuilder.appendValue(mappedStore, i, mappedValue);
+                }
+            } finally {
+// Disabled to let the lambda compile first
+// if (CompilerDirectives.inInterpreter()) {
+// LoopNode.reportLoopCount(this, i);
+// }
+            }
+
+            return createArray(arrayBuilder.finish(mappedStore, size), size);
+        }
+
+    }
+
     @CoreMethod(names = { "map!", "collect!" }, needsBlock = true, enumeratorSize = "size", raiseIfFrozenSelf = true)
     @ImportStatic(ArrayGuards.class)
     public abstract static class MapInPlaceNode extends YieldingCoreMethodNode {
